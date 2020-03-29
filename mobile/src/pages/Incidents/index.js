@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { View, FlatList, Image, Text, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+import { View, Image, Text, TouchableOpacity, FlatList } from 'react-native';
 
+import api from '../../services/api';
 
 import logoImg from '../../assets/logo.png';
 
-import styles from './styles'; 
+import styles from './styles';
 
-import api from '../../services/api'
-
-export default function Incidents(){
+export default function Incidents() {
     const [incidents, setIncidents] = useState([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(false);
-
+    const [isPlural, setIsPlural] = useState('casos');
 
     const navigation = useNavigation();
 
@@ -23,12 +22,20 @@ export default function Incidents(){
         navigation.navigate('Detail', { incident });
     }
 
-    async function loadIncidents(){
+    function checkPlural(totalCases) {
+        if (Number(totalCases) === 1) {
+            setIsPlural('caso');
+        } else {
+            setIsPlural('casos');
+        }
+    }
+
+    async function loadIncidents() {
         if (loading) {
             return;
         }
 
-        if ( total > 0 && incidents.length == total){
+        if (total > 0 && incidents.length === total) {
             return;
         }
 
@@ -37,38 +44,43 @@ export default function Incidents(){
         const response = await api.get('incidents', {
             params: { page }
         });
-
+        
+        const totalCases = response.headers['x-total-count'];
+        
         setIncidents([...incidents, ...response.data]);
-        setTotal(response.header['x-total-count']);
+        setTotal(totalCases);
+
+        checkPlural(totalCases);
+        
         setPage(page + 1);
         setLoading(false);
-    }
+    };
 
-    useEffect(() =>{
+    useEffect(() => {
         loadIncidents();
     }, []);
- 
+
     return(
         <View style={styles.container}>
             <View style={styles.header}>
                 <Image source={logoImg} />
-                <Text style={styles.headertext}>
-                    Total de <Text style={styles.headerTextBold}>{total} casos.</Text>   
+                <Text style={styles.headerText}>
+                    Total de <Text style={styles.headerTextBold}>{total} {isPlural}</Text>. 
                 </Text>
             </View>
 
             <Text style={styles.title}>Bem-vindo!</Text>
-            <Text styles={styles.description}>Escolha um dos casos abaixo e salve o dia </Text>
+            <Text style={styles.description}>Escolha um dos casos abaixo e salve o dia.</Text>
 
             <FlatList 
                 data={incidents}
                 style={styles.incidentList}
                 keyExtractor={incident => String(incident.id)}
-                //showsVerticalScrollIndicator={false}
+                showsVerticalScrollIndicator={false}
                 onEndReached={loadIncidents}
                 onEndReachedThreshold={0.2}
                 renderItem={({ item: incident }) => (
-                    <View styles={styles.incident}>
+                    <View style={styles.incident}>
                         <Text style={styles.incidentProperty}>ONG:</Text>
                         <Text style={styles.incidentValue}>{incident.name}</Text>
 
@@ -76,26 +88,23 @@ export default function Incidents(){
                         <Text style={styles.incidentValue}>{incident.title}</Text>
 
                         <Text style={styles.incidentProperty}>VALOR:</Text>
-                        <Text style={styles.incidentValue}>{Intl.NumberFormat('pt-BR', {
-                            style: 'currency',
-                             currency: 'BRL'
-                             }).format(incident.value)}
-                             </Text>
+                        <Text style={styles.incidentValue}>
+                            {Intl.NumberFormat('pt-BR', { 
+                                style: 'currency',
+                                currency: 'BRL'
+                            }).format(incident.value)}
+                        </Text>
 
                         <TouchableOpacity 
-                        style={styles.detailsButton} 
-                        onPress={() => navigateToDetail(incident)}
+                            style={styles.detailsButton}
+                            onPress={() => navigateToDetail(incident)}
                         >
-
-                        <Text style={styles.detailsButtonText}>Ver mais detalhes</Text>
-                        <Feather name='arrow-right' size={16}   color='#E02041' />
-
+                            <Text style={styles.detailsButtonText}>Ver mais detalhes</Text>
+                            <Feather name="arrow-right" size={16} color="#E02041" />
                         </TouchableOpacity>
-
                     </View>
                 )}
             />
- 
         </View>
     );
 }
